@@ -2,15 +2,20 @@
 
 Interactive web application for visualizing global bilateral migration patterns from 1960 to 2010. Developed as part of a bachelor's thesis at Czech Technical University in Prague.
 
+**Live demo:** [migrationatlas.netlify.app](https://migrationatlas.netlify.app)
+
 ## Features
 
 - Interactive world map with zoom, pan, and country selection
-- Choropleth shading by net migration, total immigration/emigration, unemployment, urbanization, or median age
+- Map shading by net migration, population, unemployment, urbanization, or median age
 - Side panel with country-level statistics and demographic line charts
 - Bilateral migration flow lookup between any two countries
-- Time period selection across 5-year intervals (1960–2005)
+- Time period selection across 5-year and 10-year intervals (1960–2010)
 - Continent-based filtering of migration partners
 - Top 10 immigration sources and emigration destinations per country
+- Reliability labels on bilateral flows to indicate confidence in modelled estimates
+- Graph Builder for comparing any two indicators on a dual-axis chart
+- Guided tour for first-time users and a preferences menu for display toggles
 
 ## Prerequisites
 
@@ -21,20 +26,20 @@ Interactive web application for visualizing global bilateral migration patterns 
 
 1. **Clone the repository**
 
-```bash
-git clone https://github.com/RasimAlaskarli/Migration-Thesis.git
-cd Migration-Thesis
+```
+git clone https://github.com/RasimAlaskarli/Thesis.git
+cd Thesis
 ```
 
 2. **Install dependencies**
 
-```bash
+```
 npm install
 ```
 
 3. **Start the development server**
 
-```bash
+```
 npm run dev
 ```
 
@@ -44,7 +49,7 @@ Navigate to `http://localhost:5173` (or the URL shown in the terminal).
 
 ## Building for Production
 
-```bash
+```
 npm run build
 ```
 
@@ -52,7 +57,7 @@ The output will be in the `dist/` folder, ready to be deployed to any static hos
 
 To preview the production build locally:
 
-```bash
+```
 npm run preview
 ```
 
@@ -60,38 +65,54 @@ npm run preview
 
 - **Frontend:** React 19, D3.js 7
 - **Build Tool:** Vite 7
-- **Data Processing:** Python 3 (pandas, numpy)
+- **Data Processing:** Python 3
 
 ## Project Structure
 
 ```
-Migration-Thesis/
-├── scripts/                  # Python data processing scripts
-│   ├── process_data.py       # Main script: generates migrationData.json and chartData.json
-│   ├── reduce_abel.py        # Reduces raw Abel CSV to manageable size
-│   └── extract-migration.py  # Extracts migration data from raw sources
+Thesis/
+├── scripts/                       # Python data processing scripts
+│   ├── build_chart_data.py        # Builds demographic indicators JSON from World Bank CSVs
+│   ├── merge_source_estimates.py  # Combines Abel 2018 and Abel & Cohen 2019 flow estimates
+│   ├── compute_flow_reliability.py # Computes median flow value and reliability labels
+│   ├── export_app_data.py         # Produces the final JSON files used by the app
+│   ├── analyze_chapter4.py        # Reproduces thesis Chapter 4 statistical analysis
+│   ├── validate_migration_data.py # Cross-source validation against World Bank net migration
+│   └── run_pipeline.sh            # Runs the full pipeline end-to-end
 ├── src/
 │   ├── components/
-│   │   ├── WorldMap.jsx      # Main map component (D3 rendering, zoom, state management)
-│   │   ├── CountryPanel.jsx  # Side panel with stats, charts, and migration lists
-│   │   ├── LineChart.jsx     # Time series line chart for demographic indicators
-│   │   ├── MapControls.jsx   # Zoom buttons, period selector, choropleth dropdown, tooltip
-│   │   ├── MigrationList.jsx # Ranked list of migration partners
-│   │   └── CountrySearch.jsx # Bilateral flow search with country picker
+│   │   ├── WorldMap.jsx           # Main map component (D3 rendering, zoom, state management)
+│   │   ├── CountryPanel.jsx       # Side panel with statistics, charts, and migration lists
+│   │   ├── LineChart.jsx          # Time series chart for demographic indicators
+│   │   ├── MapControls.jsx        # Zoom buttons, period selector, shading dropdown
+│   │   ├── MigrationList.jsx      # Ranked list of migration partners with reliability badges
+│   │   ├── CountrySearch.jsx      # Bilateral flow search with country picker
+│   │   ├── CountrySearchBar.jsx   # Top-of-map country search bar
+│   │   ├── FlowArcs.jsx           # Curved arrows showing migration corridors on the map
+│   │   ├── GraphBuilder.jsx       # Dual-axis chart panel for comparing two indicators
+│   │   ├── PreferencesMenu.jsx    # Display toggles for arcs and labels
+│   │   └── Tour.jsx               # Guided tour overlay for first-time users
 │   ├── data/
-│   │   ├── migrationData.json  # Bilateral migration flows (Abel & Sander estimates)
-│   │   ├── chartData.json      # Unemployment, urbanization, median age by country
-│   │   ├── constants.js        # Country codes, continent mappings, periods, TopoJSON URL
-│   │   └── codeToName.json     # ISO3 code to country name mapping
+│   │   ├── chartData.json         # Annual demographic indicators by country (1960–2010)
+│   │   ├── migrationData_5yr.json # Bilateral flows aggregated in 5-year intervals
+│   │   ├── migrationData_10yr.json # Bilateral flows aggregated in 10-year intervals
+│   │   └── constants.js           # Country codes, continent mappings, periods, TopoJSON URL
+│   ├── hooks/
+│   │   ├── useMapData.js          # Loads and merges JSON data sources
+│   │   └── useMapColors.js        # Computes shading color scales
 │   ├── utils/
-│   │   └── formatters.js     # Number formatting and country name lookup
+│   │   └── formatters.js          # Number formatting and country name lookup
 │   ├── styles/
-│   │   └── index.css         # Global styles
-│   ├── App.jsx               # Root component
-│   └── main.jsx              # Entry point
+│   │   └── index.css              # Global styles
+│   ├── App.jsx                    # Root component
+│   └── main.jsx                   # Entry point
 ├── index.html
 ├── package.json
 ├── vite.config.js
 └── README.md
 ```
 
+## Data Sources
+
+- **Demographic indicators** (net migration, urbanization, median age, unemployment, population) are taken from the [World Bank World Development Indicators](https://data.worldbank.org/).
+- **Bilateral migration flow estimates** are taken from [Abel (2018)](https://doi.org/10.1177/0197918318781842) and [Abel & Cohen (2019)](https://doi.org/10.1038/s41597-019-0089-3). The two raw CSV files (~440 MB combined) are not committed to the repository; download them from the authors' Figshare pages and place them in `scripts/` to regenerate the pipeline output.
