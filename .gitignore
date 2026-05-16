@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vite/
+.netlify/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.local
+
+# Large source CSVs — too large for git, download separately (see README)
+scripts/gf_imr.csv
+scripts/bilat_mig.csv
+
+# Pipeline intermediates — regenerable from CSVs via the pipeline scripts
+scripts/combined_flows.json
+scripts/definitive_flows.json
+scripts/confidenceMap.json
+
+# Stray app JSONs written by the pipeline — the committed copies live in src/data/
+scripts/migrationData_*.json
+scripts/chartData.json
+
+# Python virtual environment and cache
+scripts/.venv/
+**/__pycache__/
+*.py[cod]
+
+# Analysis output (regenerable)
+scripts/figures/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Other package managers (project uses npm)
+yarn.lock
+pnpm-lock.yaml
