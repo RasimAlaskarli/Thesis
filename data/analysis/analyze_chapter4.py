@@ -306,7 +306,7 @@ def fig_timeline(chart_data: Dict, output_path: Path) -> None:
 def fig_scatter(rows: List[Dict], x_key: str, y_key: str,
                 x_label: str, y_label: str, output_path: Path,
                 x_scale: float = 1.0) -> None:
-    """Scatter plot with country labels and regression line."""
+    """Scatter plot with country labels and per-region regression lines."""
     pairs = [(r[x_key] / x_scale, r[y_key], r["region"], r["name"], r["code"])
              for r in rows
              if r[x_key] is not None and r[y_key] is not None]
@@ -317,6 +317,7 @@ def fig_scatter(rows: List[Dict], x_key: str, y_key: str,
 
     fig, ax = plt.subplots(figsize=(7, 5))
 
+    # Plot points
     for x, y, region, name, code in pairs:
         color = COLOR_WEST if region == "Western" else COLOR_EAST
         ax.scatter(x, y, s=35, color=color, alpha=0.75, edgecolor="white",
@@ -324,46 +325,72 @@ def fig_scatter(rows: List[Dict], x_key: str, y_key: str,
         ax.annotate(code, (x, y), xytext=(4, 4), textcoords="offset points",
                     fontsize=6, color=COLOR_TEXT, alpha=0.85)
 
-    # Regression line over all points
-    xs = np.array([p[0] for p in pairs])
-    ys = np.array([p[1] for p in pairs])
-    if len(xs) >= 3 and np.std(xs) > 0:
+    # Helper: fit and plot a regression line for one group of points
+    def fit_and_plot(group_pairs, color, linestyle, alpha, zorder):
+        if len(group_pairs) < 3:
+            return None
+        xs = np.array([p[0] for p in group_pairs])
+        ys = np.array([p[1] for p in group_pairs])
+        if np.std(xs) == 0:
+            return None
         m, b = np.polyfit(xs, ys, 1)
         x_line = np.linspace(xs.min(), xs.max(), 100)
-        ax.plot(x_line, m * x_line + b, color=COLOR_AXIS, linewidth=1,
-                linestyle="--", alpha=0.7, zorder=2)
+        ax.plot(x_line, m * x_line + b, color=color, linewidth=1.2,
+                linestyle=linestyle, alpha=alpha, zorder=zorder)
         r = np.corrcoef(xs, ys)[0, 1]
-        # Place the correlation annotation in the figure title area, above
-        # the plot, so it doesn't overlap with data points near the corners.
-        ax.set_title(f"Pearson r = {r:.2f}   (n = {len(pairs)})",
+        return r, len(group_pairs)
+
+    # Compute overall r for the title (no line drawn)
+    xs_all = np.array([p[0] for p in pairs])
+    ys_all = np.array([p[1] for p in pairs])
+    overall_r = np.corrcoef(xs_all, ys_all)[0, 1] if np.std(xs_all) > 0 else None
+    overall_n = len(pairs)
+
+    # Per-region regressions
+    western_pairs = [p for p in pairs if p[2] == "Western"]
+    eastern_pairs = [p for p in pairs if p[2] == "Eastern"]
+    west_stats = fit_and_plot(western_pairs, COLOR_WEST, "-", 0.85, 2)
+    east_stats = fit_and_plot(eastern_pairs, COLOR_EAST, "-", 0.85, 2)
+
+    # Title summarising all three correlations
+    title_parts = []
+    if overall_r is not None:
+        title_parts.append(f"Overall r = {overall_r:.2f}  (n = {overall_n})")
+    if west_stats is not None:
+        title_parts.append(f"WE r = {west_stats[0]:.2f}  (n = {west_stats[1]})")
+    if east_stats is not None:
+        title_parts.append(f"EE r = {east_stats[0]:.2f}  (n = {east_stats[1]})")
+    if title_parts:
+        ax.set_title("   ".join(title_parts),
                      fontsize=9, color=COLOR_TEXT, loc="left", pad=8)
 
     ax.axvline(0, color=COLOR_AXIS, linewidth=0.5, alpha=0.4, zorder=1)
     ax.axhline(0, color=COLOR_AXIS, linewidth=0.5, alpha=0.4, zorder=1)
 
-    # Add a small padding to the y-axis so labels at the extremes are visible.
-    # Without this, the highest points (e.g., BIH at +17.6 in median age) can
-    # get clipped right at the top edge of the plot frame.
+    # Y-axis padding (initial)
     y_min, y_max = ax.get_ylim()
     y_range = y_max - y_min
     ax.set_ylim(y_min - 0.03 * y_range, y_max + 0.07 * y_range)
 
-    # Legend (manual, since we used colors directly)
+    # Legend
     from matplotlib.lines import Line2D
     legend_elements = [
         Line2D([0], [0], marker="o", color="w", markerfacecolor=COLOR_WEST,
                markersize=7, label="Western Europe"),
         Line2D([0], [0], marker="o", color="w", markerfacecolor=COLOR_EAST,
                markersize=7, label="Eastern Europe"),
+        Line2D([0], [0], color=COLOR_WEST, linewidth=1.2,
+               label="WE trend"),
+        Line2D([0], [0], color=COLOR_EAST, linewidth=1.2,
+               label="EE trend"),
     ]
-    # Place legend in lower right to avoid covering data points in upper area
-    ax.legend(handles=legend_elements, loc="lower right", frameon=False, fontsize=8)
+    ax.legend(handles=legend_elements, loc="lower right", frameon=False, fontsize=7)
 
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
     ax.grid(True, alpha=0.4)
 
-    # Add 5% padding to y-axis so points near the boundary aren't clipped
+    # Final y-axis padding
     y_vals = [p[1] for p in pairs]
     y_min, y_max = min(y_vals), max(y_vals)
     y_margin = (y_max - y_min) * 0.08
